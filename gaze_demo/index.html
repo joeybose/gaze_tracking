@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html >
+  <head>
+    <meta charset="utf-8">
+    <title>Digital Concierge</title>
+
+    <link rel="stylesheet" type="text/css" href="assets/css/app.css" />
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css">
+
+    <script src="assets/js/bling.js"></script>
+
+    
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+  </head>
+  <body>
+    <div class="main-wrapper">
+      <div class="row no_margin">
+        <div class="col-md-3  block" ><video id="1" class="bg_video" muted loop src="assets/videos/ce.mp4"></video></div>
+        <div class="col-md-3  block" ><video id="2" class="bg_video" muted loop src="assets/videos/ce.mp4"></video></div>
+       
+      </div>
+
+      <div class="row no_margin">
+        <div class="col-md-3  block" ><video id="3" class="bg_video" muted loop src="assets/videos/ce.mp4"></video></div>
+        <div class="col-md-3  block" ><video id="4" class="bg_video" muted loop src="assets/videos/ce.mp4"></video></div>
+      </div>
+
+       
+    </div>
+ 
+    <script type="text/javascript">
+    var start = new Event('playbg');
+    var stop = new Event('stopbg');
+
+    var conn = new WebSocket('ws://localhost:3000',"echo-protocol");
+      conn.onopen = function(e) {
+          console.log("Connection established!");
+      };
+
+      conn.onmessage = function(e) {
+          set_play(e.data.toString());
+      };
+
+
+      function set_play (quadrant) {
+        var els = document.getElementsByClassName("bg_video");
+        [].forEach.call(els, function (elem) {
+          elem.dispatchEvent(stop);
+        });
+        var selector = quadrant.replace("\n", "");
+
+        var e = document.getElementById(selector);
+        if (e!==undefined && e!= null) {
+          e.dispatchEvent(start);
+        }
+      }
+
+    $(".bg_video ").on("playbg", function(e){
+      e.target.play();
+    });
+
+    $(".bg_video ").on("stopbg", function(e){
+      var video = e.target;
+      video.pause();
+    });
+    </script>
+  </body>
+</html>

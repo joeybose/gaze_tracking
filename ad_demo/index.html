@@ -1,0 +1,281 @@
+<html>
+<head>
+  <link rel="stylesheet" href="bower_components/font-awesome/css/font-awesome.min.css" media="screen" title="font awesome" charset="utf-8">
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+      font-family: Helvetica, Arial, sans-serif;
+    }
+    video {
+      max-width: 100%;
+      height: auto;
+      transition: opacity 0.400s linear 0s;
+      opacity: 1;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    .lookOverlay {
+      position: absolute;
+      padding: 10px 15px;
+      background: hsla(191,0%,45%,0.5);
+      border-radius: 5px;
+      color: white;
+      opacity: 0;
+      transition: opacity 0.250s linear 0s;
+      font-size: 1.5em;
+      z-index: 2;
+      font-weight: 200;
+    }
+    .lookOverlay--topLeft {
+      top: 7%;
+      left: 7%;
+    }
+    .lookOverlay--topRight {
+      top: 7%;
+      right: 7%;
+    }
+    .lookOverlay--botLeft {
+      bottom: 7%;
+      left: 7%;
+    }
+    .lookOverlay--botRight {
+      bottom: 7%;
+      right: 7%;
+    }
+  </style>
+</head>
+<body>
+  <div class="lookOverlay lookOverlay--topLeft">
+    <i class="fa fa-eye"></i> Look Here
+  </div>
+  <div class="lookOverlay lookOverlay--topRight">
+    <i class="fa fa-eye"></i> Look Here
+  </div>
+  <div class="lookOverlay lookOverlay--botLeft">
+    <i class="fa fa-eye"></i> Look Here
+  </div>
+  <div class="lookOverlay lookOverlay--botRight">
+    <i class="fa fa-eye"></i> Look Here
+  </div>
+
+  <video id="inactive" class="selecting" autoplay>
+    <source src="videos/inactive.mp4" type="video/mp4">
+  </video>
+  <video id="showing_top_right" style="opacity: 0;">
+    <source src="videos/top_right.mp4" type="video/mp4">
+  </video>
+  <video id="showing_bot_right" style="opacity: 0;">
+    <source src="videos/bot_right.mp4" type="video/mp4">
+  </video>
+  <video id="showing_top_left" style="opacity: 0;">
+    <source src="videos/top_left.mp4" type="video/mp4">
+  </video>
+  <video id="showing_bot_left" style="opacity: 0;">
+    <source src="videos/bot_left.mp4" type="video/mp4">
+  </video>
+
+  <script>
+    var VIDEO_STATES = {
+      inactive: "#inactive",
+      selecting: ".selecting",
+      showing: [
+        "#showing_top_left",
+        "#showing_top_right",
+        "#showing_bot_left",
+        "#showing_bot_right"
+      ],
+      come_hither: "#come_hither"
+    };
+
+    var currentState = VIDEO_STATES.inactive;
+
+    var NO_FACE_TIMEOUT = 5000;
+    var FACE_DETECTION_SUCCESS_COUNT = 25;
+    var CLASSIFICATION_SUCCESS_TIME = 2000;
+
+    document.getElementById('inactive').addEventListener('ended', onInactiveEnded, false);
+    document.getElementById('showing_top_left').addEventListener('ended', onShowingEnded, false);
+    document.getElementById('showing_top_right').addEventListener('ended', onShowingEnded, false);
+    document.getElementById('showing_bot_left').addEventListener('ended', onShowingEnded, false);
+    document.getElementById('showing_bot_right').addEventListener('ended', onShowingEnded, false);
+    // Not implemented yet.
+    // document.getElementById('come_hither').addEventListener('ended', onComeHitherEnded, false);
+
+    function switchToVideo(fromSelector, toSelector) {
+      var newVideo = document.querySelector(toSelector);
+      var oldVideo = document.querySelector(fromSelector);
+
+      if(newVideo == oldVideo && oldVideo.ended) {
+        newVideo.currentTime = 0;
+        newVideo.play();
+        return;
+      }
+
+      oldVideo.style.opacity = '0';
+      newVideo.style.opacity = '1';
+      newVideo.play();
+    }
+
+    var ws = new WebSocket("ws://localhost:2000/ws");
+    var lastDetectedTime = null;
+    var lastClassificationStartTime = null;
+    var lastClassification = null;
+    var faceDetectionCount = 0;
+
+    ws.onmessage = function(evt) {
+      console.log("Current state", currentState);
+      console.log("faceDetectionCount", faceDetectionCount);
+      var progress = Math.abs(lastClassificationStartTime - Date.now())/CLASSIFICATION_SUCCESS_TIME;
+      console.log("progress", progress);
+      console.log(evt.data);
+
+      if(evt.data == -1) {
+        onNoFaceDetected(evt);
+      }
+      else {
+        onFaceDetected(evt);
+      }
+
+      switch(currentState) {
+        case VIDEO_STATES.inactive:
+          onInactiveTick(evt);
+          break;
+        case VIDEO_STATES.selecting:
+          onSelectingTick(evt);
+          break;
+        case VIDEO_STATES.showing:
+          onShowingTick(evt);
+          break;
+        case VIDEO_STATES.come_hither:
+          onComeHitherTick(evt);
+          break;
+      }
+    };
+
+    //
+    // UI Controls
+    //
+
+    var overlays = document.querySelectorAll('.lookOverlay');
+    function toggleOverlayVisibility(shown) {
+      for(var i = 0; i < overlays.length; i++) {
+        overlays[i].style.opacity = shown ? '1' : '0';
+      }
+    }
+
+    function resetOverlays() {
+      for(var i = 0; i < overlays.length; i++) {
+        overlays[i].style.background = "hsla(191,0%,45%,0.5)";
+      }
+    }
+
+    function progressOverlay(i, progress) {
+      overlays[lastClassification - 1].style.background = "hsla(191,"+progress*100+"%,45%,0.5)";
+    }
+
+
+    //
+    // Face Detection Callbacks
+    //
+
+    function onFaceDetected(evt) {
+      lastDetectedTime = Date.now();
+      faceDetectionCount += 1;
+
+      if(lastClassification != evt.data) {
+        lastClassificationStartTime = Date.now();
+        lastClassification = evt.data;
+      }
+    }
+
+    function onNoFaceDetected(evt) {
+      faceDetectionCount = 0;
+    }
+
+
+    //
+    // State Tick Callbacks
+    //
+
+    function onInactiveTick(evt) {
+      // If a face has been around for enough time, go to selection
+      if(faceDetectionCount >= FACE_DETECTION_SUCCESS_COUNT) {
+        toggleOverlayVisibility(true);
+        lastClassificationStartTime = Date.now();
+        switchToVideo(currentState, VIDEO_STATES.selecting);
+        currentState = VIDEO_STATES.selecting;
+      }
+    };
+
+    function onSelectingTick(evt) {
+      console.log("selecting");
+      if(evt.data == -1) { // no face detected
+        // If a face disappears, go to inactive
+        if(Math.abs(Date.now() - lastDetectedTime) >= NO_FACE_TIMEOUT) {
+          toggleOverlayVisibility(false);
+          switchToVideo(currentState, VIDEO_STATES.inactive);
+          currentState = VIDEO_STATES.inactive;
+        }
+      }
+      else {
+        // Update UI with progress of selection
+        var progress = Math.abs(lastClassificationStartTime - Date.now())/CLASSIFICATION_SUCCESS_TIME;
+
+        resetOverlays();
+        progressOverlay(lastClassification, progress);
+
+        if(progress >= 1) {
+          // Go to showing if starred long enough
+          var newState = VIDEO_STATES.showing[evt.data - 1];
+
+          toggleOverlayVisibility(false);
+
+          switchToVideo(currentState, newState);
+          currentState = newState;
+        }
+      }
+    };
+
+    function onShowingTick(evt) {
+      // Do nothing
+    };
+
+    function onComeHitherTick(evt) {
+      // Do nothing
+    };
+
+
+    //
+    // Video Ended Callbacks
+    //
+
+    function onInactiveEnded(evt) {
+      switchToVideo(currentState, VIDEO_STATES.inactive);
+    };
+
+    function onSelectingEnded(evt) {
+      // DO nothing
+    };
+
+    function onShowingEnded(evt) {
+      // Reset counters as they shouldn't count when user to observing
+      lastClassificationStartTime = Date.now();
+
+      // Reset UI
+      resetOverlays();
+      toggleOverlayVisibility(true);
+
+      switchToVideo(currentState, VIDEO_STATES.selecting);
+      currentState = VIDEO_STATES.selecting;
+    };
+
+    function onComeHitherEnded(evt) {
+      switchToVideo(currentState, VIDEO_STATES.inactive);
+      currentState = VIDEO_STATES.inactive;
+    };
+  </script>
+</body>
+</html>

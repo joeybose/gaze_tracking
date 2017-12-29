@@ -1,0 +1,3 @@
+# Nmap 6.47 scan initiated Fri Jun 26 11:05:09 2015 as: nmap -Pn -o 10.10.1.108
+WARNING: No targets were specified, so 0 hosts scanned.
+# Nmap done at Fri Jun 26 11:05:09 2015 -- 0 IP addresses (0 hosts up) scanned in 0.04 seconds

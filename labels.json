@@ -1,0 +1,11 @@
+{
+  "z": "center",
+  "q": "top_left_natural",
+  "w": "top_right_natural",
+  "a": "bot_left_natural",
+  "s": "bot_right_natural",
+  "e": "top_left_straight",
+  "r": "top_right_straight",
+  "d": "bot_left_straight",
+  "f": "bot_right_straight"
+}
