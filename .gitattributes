@@ -1,0 +1,5 @@
+notebooks/gaze_vectors_with_failures.csv binary
+src/models/*.yml filter=lfs diff=lfs merge=lfs -text
+src/models/Random_forrest_classifier.yml filter=lfs diff=lfs merge=lfs -text
+src/models/history_Random_forrest_classifier.yml filter=lfs diff=lfs merge=lfs -text
+src/models/normalized_Random_forrest_classifier.yml filter=lfs diff=lfs merge=lfs -text
